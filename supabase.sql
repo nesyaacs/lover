@@ -1,7 +1,3 @@
--- ============================================================
--- SUPABASE SETUP (jalankan sekali di: Supabase Dashboard > SQL Editor)
--- ============================================================
-
 create table if not exists public.comments (
   id bigint generated always as identity primary key,
   name text not null,
@@ -18,7 +14,6 @@ create table if not exists public.visitors (
   user_agent text
 );
 
--- Izinkan akses dari aplikasi Flask (anon key) supaya bisa insert/select/delete
 alter table public.comments enable row level security;
 alter table public.visitors enable row level security;
 
