@@ -6,7 +6,7 @@ import os
 app = Flask(__name__, template_folder='templates', static_folder='static')
 app.secret_key = 'mensiv_scrapbook_romantic_secret_key_2026'
 
-# --- MASUKKAN CREDENTIAL SUPABASE KAMU DI SINI ---
+# --- KONFIGURASI SUPABASE ---
 SUPABASE_URL = "URL_SUPABASE_KAMU"
 SUPABASE_KEY = "ANON_KEY_SUPABASE_KAMU"
 
