@@ -643,10 +643,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('commentMessage').value = '';
 
                     note.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    alert(result.message || 'Gagal mengirim ucapan. Silakan coba lagi!');
                 }
             } catch (err) {
-                alert('Gagal mengirim ucapan. Silakan coba lagi!');
                 console.error('Wishes error:', err);
+                alert('Gagal mengirim ucapan. Cek pesan error di konsol browser (F12).');
             }
         });
     }

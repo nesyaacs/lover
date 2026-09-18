@@ -310,6 +310,11 @@ def get_stats():
 # KONEKSI SQLITE (hanya dipakai saat mode lokal)
 # ============================================================
 def get_db_connection():
+    if os.environ.get('VERCEL') and not use_supabase():
+        raise RuntimeError(
+            'Mode Vercel terdeteksi tapi SUPABASE_URL / SUPABASE_KEY belum di-set '
+            'di Project Settings > Environment Variables, lalu Redeploy.'
+        )
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
