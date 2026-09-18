@@ -1,20 +1,89 @@
-import sqlite3
 import os
+import json
+import sqlite3
 from datetime import datetime
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# ============================================================
+# KONFIGURASI
+# ============================================================
 DB_PATH = os.path.join(os.path.dirname(__file__), 'scrapbook.db')
 
-def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+# Isi dari Environment Variables Vercel (Project Settings > Environment Variables):
+#   SUPABASE_URL   -> contoh: https://xxxx.supabase.co
+#   SUPABASE_KEY   -> anon/public key dari Supabase (Settings > API)
+#   ADMIN_USERNAME -> username admin (default: admin)
+#   ADMIN_PASSWORD -> password admin  (default: admin123)
+#
+# Kalau SUPABASE_URL & SUPABASE_KEY terisi -> pakai Supabase (wajib untuk Vercel).
+# Kalau kosong -> fallback otomatis ke SQLite (cocok untuk jalan lokal).
+SUPABASE_URL = os.environ.get('SUPABASE_URL', '').strip().rstrip('/')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '').strip()
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
 
+
+def use_supabase():
+    """True jika terhubung ke Supabase, False jika pakai SQLite lokal."""
+    return bool(SUPABASE_URL and SUPABASE_KEY)
+
+
+# ============================================================
+# HELPERS SUPABASE (REST / PostgREST, hanya stdlib, tanpa pip baru)
+# ============================================================
+def _sb_request(method, table, params=None, payload=None, prefer='return=minimal', want_count=False):
+    url = f'{SUPABASE_URL}/rest/v1/{table}'
+    if params:
+        url = f'{url}?{urlencode(params)}'
+
+    headers = {
+        'apikey': SUPABASE_KEY,
+        'Authorization': f'Bearer {SUPABASE_KEY}',
+        'Content-Type': 'application/json',
+        'Prefer': prefer,
+    }
+    body = json.dumps(payload).encode('utf-8') if payload is not None else None
+    req = Request(url, data=body, headers=headers, method=method)
+
+    try:
+        with urlopen(req, timeout=30) as resp:
+            raw = resp.read().decode('utf-8', 'replace')
+            content_range = resp.headers.get('Content-Range', '')
+    except HTTPError as e:
+        detail = e.read().decode('utf-8', 'replace')
+        raise RuntimeError(f'Supabase {method} {table} gagal ({e.code}): {detail}') from e
+
+    if want_count:
+        if '/' in content_range:
+            try:
+                return int(content_range.split('/')[-1])
+            except ValueError:
+                return 0
+        return 0
+
+    if raw.strip():
+        try:
+            return json.loads(raw)
+        except ValueError:
+            return []
+    return []
+
+
+# ============================================================
+# INISIALISASI
+# ============================================================
 def init_db():
+    # Mode Supabase: tabel dibuat manual lewat SQL Editor (lihat supabase.sql).
+    # Jadi di sini tidak dilakukan apa-apa.
+    if use_supabase():
+        return None
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    
-    # Table for visitor logging
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS visitors (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,8 +93,7 @@ def init_db():
             user_agent TEXT
         )
     ''')
-    
-    # Table for wishes / comments from friends & loved ones
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS comments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,7 +104,6 @@ def init_db():
         )
     ''')
 
-    # Table for admin accounts (password disimpan sebagai hash)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS admin_users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,15 +115,21 @@ def init_db():
 
     conn.commit()
 
-    # Seed akun admin default (admin / admin123) hanya jika belum ada admin sama sekali
     cursor.execute('SELECT COUNT(*) FROM admin_users')
     if cursor.fetchone()[0] == 0:
         add_admin_user('admin', 'admin123')
 
     conn.close()
 
+
+# ============================================================
+# ADMIN
+# ============================================================
 def add_admin_user(username, password):
-    """Menambah akun admin baru. Password disimpan sebagai hash (bukan teks)."""
+    if use_supabase():
+        print('[INFO] Mode Supabase: admin login diatur lewat env ADMIN_USERNAME & ADMIN_PASSWORD di Vercel.')
+        return None
+
     conn = get_db_connection()
     cursor = conn.cursor()
     now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -70,8 +143,11 @@ def add_admin_user(username, password):
     conn.close()
     return user_id
 
+
 def verify_admin(username, password):
-    """Cek login admin terhadap database. Mengembalikan True/False."""
+    if use_supabase():
+        return username.strip() == ADMIN_USERNAME and password == ADMIN_PASSWORD
+
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM admin_users WHERE username = ?', (username.strip(),))
@@ -81,7 +157,10 @@ def verify_admin(username, password):
         return False
     return check_password_hash(row['password_hash'], password)
 
+
 def get_admin_users():
+    if use_supabase():
+        return []
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('SELECT id, username, created_at FROM admin_users ORDER BY id ASC')
@@ -89,7 +168,10 @@ def get_admin_users():
     conn.close()
     return [dict(row) for row in rows]
 
+
 def delete_admin_user(user_id):
+    if use_supabase():
+        return False
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('DELETE FROM admin_users WHERE id = ?', (user_id,))
@@ -98,10 +180,24 @@ def delete_admin_user(user_id):
     conn.close()
     return deleted
 
+
+# ============================================================
+# VISITOR / PENGUNJUNG
+# ============================================================
 def add_visitor(name, ip_address='127.0.0.1', user_agent=''):
+    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    if use_supabase():
+        _sb_request('POST', 'visitors', payload={
+            'name': name.strip(),
+            'visited_at': now_str,
+            'ip_address': ip_address,
+            'user_agent': user_agent,
+        })
+        return None
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     cursor.execute(
         'INSERT INTO visitors (name, visited_at, ip_address, user_agent) VALUES (?, ?, ?, ?)',
         (name.strip(), now_str, ip_address, user_agent)
@@ -109,7 +205,15 @@ def add_visitor(name, ip_address='127.0.0.1', user_agent=''):
     conn.commit()
     conn.close()
 
+
 def get_visitors(limit=100):
+    if use_supabase():
+        return _sb_request('GET', 'visitors', params={
+            'select': '*',
+            'order': 'id.desc',
+            'limit': str(limit),
+        })
+
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM visitors ORDER BY id DESC LIMIT ?', (limit,))
@@ -117,10 +221,24 @@ def get_visitors(limit=100):
     conn.close()
     return [dict(row) for row in rows]
 
+
+# ============================================================
+# KOMENTAR / UCAPAN (WISHES & PRAYERS)
+# ============================================================
 def add_comment(name, message, emotion='💐'):
+    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    if use_supabase():
+        rows = _sb_request('POST', 'comments', prefer='return=representation', payload={
+            'name': name.strip(),
+            'message': message.strip(),
+            'emotion': emotion,
+            'created_at': now_str,
+        })
+        return rows[0]['id'] if rows else None
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     cursor.execute(
         'INSERT INTO comments (name, message, emotion, created_at) VALUES (?, ?, ?, ?)',
         (name.strip(), message.strip(), emotion, now_str)
@@ -130,7 +248,15 @@ def add_comment(name, message, emotion='💐'):
     conn.close()
     return comment_id
 
+
 def get_comments(limit=50):
+    if use_supabase():
+        return _sb_request('GET', 'comments', params={
+            'select': '*',
+            'order': 'id.desc',
+            'limit': str(limit),
+        })
+
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM comments ORDER BY id DESC LIMIT ?', (limit,))
@@ -138,7 +264,14 @@ def get_comments(limit=50):
     conn.close()
     return [dict(row) for row in rows]
 
+
 def delete_comment(comment_id):
+    if use_supabase():
+        rows = _sb_request('DELETE', 'comments', params={
+            'id': f'eq.{comment_id}',
+        }, prefer='return=representation')
+        return len(rows) > 0
+
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('DELETE FROM comments WHERE id = ?', (comment_id,))
@@ -147,21 +280,41 @@ def delete_comment(comment_id):
     conn.close()
     return deleted
 
+
+# ============================================================
+# STATISTIK
+# ============================================================
 def get_stats():
+    if use_supabase():
+        visitors = _sb_request('GET', 'visitors', params={'select': 'id'}, prefer='count=exact', want_count=True)
+        comments = _sb_request('GET', 'comments', params={'select': 'id'}, prefer='count=exact', want_count=True)
+        return {
+            'total_visitors': visitors,
+            'total_comments': comments,
+        }
+
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('SELECT COUNT(*) FROM visitors')
     visitor_count = cursor.fetchone()[0]
-    
     cursor.execute('SELECT COUNT(*) FROM comments')
     comment_count = cursor.fetchone()[0]
-    
     conn.close()
     return {
         'total_visitors': visitor_count,
-        'total_comments': comment_count
+        'total_comments': comment_count,
     }
+
+
+# ============================================================
+# KONEKSI SQLITE (hanya dipakai saat mode lokal)
+# ============================================================
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
 
 if __name__ == '__main__':
     init_db()
-    print("Database initialized!")
+    print('Database initialized!')
