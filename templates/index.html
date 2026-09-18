@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Romantic Scrapbook 💖 | Kenangan Indah Kita</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- CSS Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>
+        (function () {
+            var saved = null;
+            try { saved = localStorage.getItem('mensiv-theme'); } catch (e) {}
+            var dark = saved ? saved === 'dark'
+                : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        })();
+    </script>
+</head>
+<body>
+
+    <button type="button" id="themeToggleBtn" class="theme-toggle-btn"
+            title="Ganti tema terang / gelap" aria-label="Ganti tema terang / gelap">🌙</button>
+
+    <!-- Popup Cerita (melayang di atas kartu) -->
+    <div id="storyPopupBackdrop" class="story-popup-backdrop hidden"></div>
+    <div id="storyPopup" class="story-popup hidden">
+        <div class="story-popup-header">
+            <h3 id="storyPopupTitle">Cerita Kita</h3>
+            <button type="button" id="storyPopupClose" class="story-popup-close" title="Tutup" aria-label="Tutup">&times;</button>
+        </div>
+        <div class="story-popup-body" id="storyPopupBody"></div>
+    </div>
+
+    <!-- Particle Canvas Background (Petals & Hearts) -->
+    <canvas id="particleCanvas"></canvas>
+
+    <!-- Guestbook Verification Modal (Wajib Isi Data Dulu Sebelum Masuk) -->
+    <div id="guestModal" class="modal-backdrop {% if initial_name %}hidden{% endif %}">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="heart-badge">💖</div>
+                <h2>Sebelum Masuk, Tulis Namamu Dulu Ya</h2>
+                <p>Tulis namamu sebelum membuka lembaran kenangan ini ✨</p>
+            </div>
+            <form id="guestForm" class="modal-form">
+                <div class="input-group">
+                    <label class="field-label" for="visitorName">👤 Nama atau Username Kamu</label>
+                    <input type="text" id="visitorName" placeholder="Ketik nama atau Usernamemu di sini..." value="{{ initial_name }}" required autocomplete="off">
+                </div>
+                <button type="submit" class="btn-primary">
+                    <span>Masuk ke Lembaran Kenangan 📖✨</span>
+                </button>
+            </form>
+            <div class="modal-footer">
+                <small>🔒 Namamu tercatat otomatis sebagai tamu.</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Audio Player Widget -->
+    <div id="musicPlayer" class="music-widget">
+        <div class="vinyl-disk" id="vinylDisk">
+            <div class="vinyl-grooves"></div>
+            <div class="vinyl-center">🌸</div>
+        </div>
+        <div class="music-info">
+            <div class="music-title">Our Romantic Melody</div>
+            <div class="music-status" id="musicStatus">Klik untuk memutar 🎵</div>
+        </div>
+        <button id="toggleAudioBtn" class="music-btn" title="Putar/Hentikan Musik">
+            <span id="audioIcon">▶️</span>
+        </button>
+    </div>
+
+    <!-- Main Container -->
+    <div class="app-container">
+        
+        <!-- Header Navigation Bar -->
+        <nav class="nav-bar">
+        <button class="nav-btn active" data-target="scrapbookSection">📖 Scrapbook</button>
+        <button class="nav-btn" data-target="sliderSection">🖼️ Memory Gallery</button>
+        <button class="nav-btn" data-target="newsSection">📰 Love Chronicles</button>
+        <button class="nav-btn" data-target="flipCardsSection">💌 Hidden Notes</button>
+        <button class="nav-btn" data-target="feedbackSection">💐 Wishes & Prayers</button>
+        </nav>
+
+        <!-- Header Banner -->
+        <header class="scrapbook-header">
+            <div class="washi-tape tape-top-left"></div>
+            <div class="washi-tape tape-top-right"></div>
+            <div class="header-stamp">STAMP OF LOVE</div>
+            <span class="subtitle-tag">Our Digital Storybook • Special Edition</span>
+            <h1 class="main-title">Happy Mensiversary</h1>
+            <p class="header-narrative">"Tepat hari ini, lima bulan, 153 hari, 3672 jam, 220320 menit, 13219000, serta berjuta cerita dan kita terus bersama."</p>
+            <div class="decorative-line">🌸 ✨ 🌸</div>
+        </header>
+
+        <!-- SECTION 1: SCRAPBOOK CHAPTERS (Side-by-Side) -->
+        <div id="scrapbookSection" class="section-tab-content">
+            <!-- Chapter 1: First Meeting -->
+            <section class="scrap-chapter scroll-reveal">
+                <div class="chapter-badge chapter-badge-lg">Chapter 1 • First date or meet?</div>
+                
+                <div class="side-by-side-grid">
+                    <!-- Left Column: Polaroid Visual -->
+                    <div class="polaroid-wrapper">
+                        <div class="washi-tape tape-polaroid"></div>
+                        <div class="polaroid-card">
+                            <div class="polaroid-img-container">
+                                <img class="polaroid-svg-placeholder" src="{{ url_for('static', filename='images/1.png') }}" alt="Senyum Pertama Merekah">
+                            </div>
+                            <div class="polaroid-caption">
+                                <span class="caption-text">When We First Met ✨</span>
+                                <span class="caption-date">Day One</span>
+                            </div>
+                        </div>
+                        <div class="sticker-heart">❤️</div>
+                    </div>
+
+                    <!-- Right Column: Narrative Story -->
+                    <div class="narrative-wrapper">
+                        <div class="paper-card">
+                            <h2 class="story-title">The Beginning of Us</h2>
+                            <p class="story-paragraph drop-cap">
+                            Stories usually begin with a simple encounter, generally speaking.
+                             But with you, it wasn't just about meeting someone new; it was out of necessity in that city—a place that suddenly felt like it belonged to just the two of us.
+                             And honestly, I could never forget how awkwardly unique those early days were as we navigated the city together.
+                             I never imagined that very city would bear witness to you becoming the person I look forward to every single day.
+                             It was never on my wishlist, but right there, you and me, turned into us. </p>
+                            <blockquote class="romantic-quote">
+                             "And because of that, I couldn't help but fall for you."
+                            </blockquote>
+                            <p class="story-paragraph">
+                            Starting from a pure coincidence, my heart naturally gravitated towards you. Little by little, our talk turned into warm, endless conversations, and time seemed to stop the moment we fell silent.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Chapter 2: Special Memories Collage -->
+            <section class="scrap-chapter scroll-reveal">
+                <div class="chapter-badge chapter-badge-lg chapter-badge-right">Chapter 2 • Sweet moments, sweeter smiles.</div>
+
+                <div class="side-by-side-grid reverse-mobile">
+                    <!-- Left Column: Story & Milestones -->
+                    <div class="narrative-wrapper">
+                        <div class="paper-card">
+                            <h2 class="story-title">Laughter, Memories & Our Journey</h2>
+                            <p class="story-paragraph drop-cap">
+                            Beyond just that first encounter, it was the small, quiet chapters—like that afternoon at the cafe, just you and me.
+                            I still remember the way you held your camera to capture me, turning an ordinary sunset into a frame frozen in time.
+                            A million stories unfolded in that single space, proving that the true beauty of us has always been hidden in these fleeting, simple moments of pure happiness.
+                            
+                            That is how we have always lived and loved.
+                             Sharing a quiet slice of pizza, a sudden laughter, and a single,
+                              tender snapshot of your favorite girl—capturing a warmth that words could never fully hold.
+                            </p>   
+                            <div class="milestones-list">
+                                <div class="milestone-item">
+                                    <span class="ms-icon">☕</span>
+                                    <div class="ms-text">
+                                        <strong>A Long Afternoon Conversation</strong>
+                                        <span>Spending time together, enjoying the sunset and sharing lighthearted stories.</span>
+                                    </div>
+                                </div>
+                                <div class="milestone-item">
+                                    <span class="ms-icon">🌟</span>
+                                    <div class="ms-text">
+                                    <strong>Stargazing Together</strong>
+                                    <span>Weaving stories as thousands of glowing stars celebrate us.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Collage Visual -->
+                    <div class="polaroid-wrapper">
+                        <div class="washi-tape tape-polaroid-alt"></div>
+                        <div class="polaroid-card rotate-right">
+                            <div class="polaroid-img-container">
+                                <img class="polaroid-svg-placeholder" src="{{ url_for('static', filename='images/2.png') }}" alt="Momen Paling Manis">
+                            </div>
+                            <div class="polaroid-caption">
+                                <span class="caption-text">Every Moment With You Is Precious</span>
+                                <span class="caption-date">Always & Forever</span>
+                            </div>
+                        </div>
+                        <div class="sticker-sparkle">✨</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- SECTION 2: SLIDE KENANGAN INTERAKTIF (MEMORY CAROUSEL) -->
+        <div id="sliderSection" class="section-tab-content">
+            <section class="scrap-gallery scroll-reveal">
+                <div class="chapter-badge">Galeri Interactive</div>
+                <h2 class="section-heading">Our Cherished Moments🖼️✨</h2>
+                
+                <div class="carousel-container">
+                    <button class="carousel-btn prev-btn" id="prevSlideBtn">&#10094;</button>
+                    
+                    <div class="carousel-track-container">
+                        <div class="carousel-track" id="carouselTrack">
+                            
+                            <!-- Slide 1 -->
+                            <div class="carousel-slide active">
+                                <div class="polaroid-card">
+                                    <div class="polaroid-img-container">
+                                        <img class="polaroid-svg-placeholder" src="{{ url_for('static', filename='images/73.png') }}" alt="Momen Pertemuan Pertama">
+                                    </div>
+                                    <div class="polaroid-caption">
+                                        <span class="caption-text">Event pertama. Aku, kamu dan menfess kala itu</span>
+                                        <span class="caption-date">Slide 1 of 10</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Slide 2 -->
+                            <div class="carousel-slide">
+                                <div class="polaroid-card">
+                                    <div class="polaroid-img-container">
+                                        <img class="polaroid-svg-placeholder" src="{{ url_for('static', filename='images/55.png') }}" alt="Obrolan Kopi di Sore Hari">
+                                    </div>
+                                    <div class="polaroid-caption">
+                                        <span class="caption-text">MOS AUREFLAME GEN-2. Ignora Mourvie and Blazers</span>
+                                        <span class="caption-date">Slide 2 of 10</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Slide 3 -->
+                            <div class="carousel-slide">
+                                <div class="polaroid-card">
+                                    <div class="polaroid-img-container">
+                                        <img class="polaroid-svg-placeholder" src="{{ url_for('static', filename='images/48.png') }}" alt="Berjalan Berdua Menembus Hujan">
+                                    </div>
+                                    <div class="polaroid-caption">
+                                        <span class="caption-text">MPLS SWANLAKE GEN-3. Pasandra and Swansis</span>
+                                        <span class="caption-date">Slide 3 of 10</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Slide 4 -->
+                            <div class="carousel-slide">
+                                <div class="polaroid-card">
+                                    <div class="polaroid-img-container">
+                                        <img class="polaroid-svg-placeholder" src="{{ url_for('static', filename='images/71.png') }}" alt="Melangkah Bersama Selamanya">
+                                    </div>
+                                    <div class="polaroid-caption">
+                                        <span class="caption-text">EVENT. NawaSena & EOS Event</span>
+                                        <span class="caption-date">Slide 4 of 10</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Slide 5 -->
+                            <div class="carousel-slide">
+                                <div class="polaroid-card">
+                                    <div class="polaroid-img-container">
+                                        <img class="polaroid-svg-placeholder" src="{{ url_for('static', filename='images/75.png') }}" alt="Tawa dan Cerita Setiap Hari">
+                                    </div>
+                                    <div class="polaroid-caption">
+                                        <span class="caption-text">PROMNIGHT SWANLAKE SCHOOL</span>
+                                        <span class="caption-date">Slide 5 of 10</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Slide 6 -->
+                            <div class="carousel-slide">
+                                <div class="polaroid-card">
+                                    <div class="polaroid-img-container">
+                                        <img class="polaroid-svg-placeholder" src="{{ url_for('static', filename='images/69.png') }}" alt="Senyum yang Menenangkan">
+                                    </div>
+                                    <div class="polaroid-caption">
+                                        <span class="caption-text">MOS AUREFLAME GEN-3. Ignora Mourvie and Fogeron Andra</span>
+                                        <span class="caption-date">Slide 6 of 10</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Slide 7 -->
+                            <div class="carousel-slide">
+                                <div class="polaroid-card">
+                                    <div class="polaroid-img-container">
+                                        <img class="polaroid-svg-placeholder" src="{{ url_for('static', filename='images/62.png') }}" alt="Petualangan Kecil Kita">
+                                    </div>
+                                    <div class="polaroid-caption">
+                                        <span class="caption-text">VVIP GUEST. OPEN HOUSE GEN-7 SCNA</span>
+                                        <span class="caption-date">Slide 7 of 10</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Slide 8 -->
+                            <div class="carousel-slide">
+                                <div class="polaroid-card">
+                                    <div class="polaroid-img-container">
+                                        <img class="polaroid-svg-placeholder" src="{{ url_for('static', filename='images/37.png') }}" alt="Hangatnya Hari-Hari Bersama">
+                                    </div>
+                                    <div class="polaroid-caption">
+                                        <span class="caption-text">GRADUATION AUREFLAME</span>
+                                        <span class="caption-date">Slide 8 of 10</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Slide 9 -->
+                            <div class="carousel-slide">
+                                <div class="polaroid-card">
+                                    <div class="polaroid-img-container">
+                                        <img class="polaroid-svg-placeholder" src="{{ url_for('static', filename='images/38.png') }}" alt="Janji Manis untuk Selamanya">
+                                    </div>
+                                    <div class="polaroid-caption">
+                                        <span class="caption-text">PROMNIGHT AUREFLAME. A power couple behind the mic</span>
+                                        <span class="caption-date">Slide 9 of 10</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Slide 10 -->
+                            <div class="carousel-slide">
+                                <div class="polaroid-card">
+                                    <div class="polaroid-img-container">
+                                        <img class="polaroid-svg-placeholder" src="{{ url_for('static', filename='images/36.png') }}" alt="Terima Kasih Sudah Ada">
+                                    </div>
+                                    <div class="polaroid-caption">
+                                        <span class="caption-text">MPLS SWANLAKE GEN-4. Pasandra & Masavie 💖</span>
+                                        <span class="caption-date">Slide 10 of 10</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <button class="carousel-btn next-btn" id="nextSlideBtn">&#10095;</button>
+                </div>
+
+                <!-- Carousel Dots Navigation -->
+                <div class="carousel-dots" id="carouselDots">
+                    <span class="dot active" data-index="0"></span>
+                    <span class="dot" data-index="1"></span>
+                    <span class="dot" data-index="2"></span>
+                    <span class="dot" data-index="3"></span>
+                    <span class="dot" data-index="4"></span>
+                    <span class="dot" data-index="5"></span>
+                    <span class="dot" data-index="6"></span>
+                    <span class="dot" data-index="7"></span>
+                    <span class="dot" data-index="8"></span>
+                    <span class="dot" data-index="9"></span>
+                </div>
+            </section>
+        </div>
+
+        <!-- SECTION 3: SPACE BERITA & ARTIKEL LENGKAP -->
+        <div id="newsSection" class="section-tab-content">
+            <section class="scrap-gallery scroll-reveal">
+                <div class="chapter-badge">Longtext Stories</div>
+                <h2 class="section-heading">Stories & News About Us 📰💖</h2>
+                <p class="section-subtext">Baca langsung, atau klik "Baca Selengkapnya" untuk membuka cerita secara penuh.</p>
+
+                <div class="news-grid">
+                    
+                    <!-- Article Card 1 -->
+                    <article class="news-card">
+                        <div class="news-tag">FEATURED STORY</div>
+                        <div class="news-img-box">
+                            <img src="{{ url_for('static', filename='images/3.png') }}" alt="Hari yang masih tak ku sangka" loading="lazy">
+                        </div>
+                        <div class="news-content">
+                            <div class="news-date">📅 30 April • Dari Mourviene</div>
+                            <h3 class="news-title">Hari yang masih tak ku sangka</h3>
+                            <p class="news-excerpt">
+                            Malam itu tepat di ambang tanggal tiga puluh entah apa yang tengah berkecamuk di benakmu. Kala itu, riak di dadaku tak lagi dipenuhi harap yang membumbung tinggi.
+                            Aku telah tiba di titik yang jauh lebih tenang dan lapang, bersiap menerima apa pun keputusanmu atas gigihnya aku yang mengejarmu di awal. 
+                            Dua bulan mendekatimu bukanlah waktu yang singkat, bukan pula perjalanan yang mudah bagiku.
+                            Terlebih saat berjalan di atas samar tanpa kepastian, tanpa kejelasan arah. Namun perlahan, dari lelah yang kita lewati, hari-hari justru mulai merekah hangat.
+                            Kita menjadi ruang yang saling menenangkan, saling memberi aman, dan seolah selalu mendekap satu sama lain.
+                            Rupanya, kamu telah menyiapkan segalanya jauh-jauh hari sebelum malam itu tiba dan kamu ungkapkan.
+                            Hingga detik ini, aku masih sering tertegun kagum menyaksikan sungguhnya usahamu. Di hari itu, aku akhirnya menemukan jawaban, kepastian, sekaligus muara dari perasaanmu untukku.
+                            Malam itu bukanlah akhir, melainkan langkah awal untuk kita berjalan lebih jauh. Hari demi hari pun berlalu hingga kita tiba di hari ini, dan aku berharap langkah ini akan merentang jauh lebih lama lagi.
+                            Terima kasih atas hadirmu dan kesempatan indah ini. Terima kasih telah bertahan dan bersamaku hingga detik ini. Mari kita jaga dan genggam erat hubungan ini lebih lama lagi, ya?
+                        </p>
+                            <button class="btn-read-more" data-article="1">
+                                <span>Baca Selengkapnya 📖</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Article Card 2 -->
+                    <article class="news-card">
+                        <div class="news-tag tag-special">SPECIAL MOMENT</div>
+                        <div class="news-img-box">
+                            <img src="{{ url_for('static', filename='images/5.png') }}" alt="Perjalanan panjang dan masih terus saling menggenggam" loading="lazy">
+                        </div>
+                        <div class="news-content">
+                            <div class="news-date">📅 4 Bulan Bersamamu</div>
+                            <h3 class="news-title">Perjalanan panjang dan masih terus saling menggenggam</h3>
+                            <p class="news-excerpt">
+                                Empat bulan berjalan bersamamu, aku selalu menemukan ruang aman dan nyaman yang belum pernah kurasakan sebelumnya.
+                                 Kamu selalu menghargai hal-hal kecil tentangku dan tak pernah ragu mengusahakan apa pun demi membahagiakanku.
+                                Banyak orang yang tidak pernah tahu bagaimana kita bisa melangkah sejauh ini.
+                                 Kita yang memang jarang memublikasikan momen, jarang berinteraksi di depan publik, bahkan sering kali masih terselip rasa canggung saat harus menjadi pasangan kerja di sebuah acara. Tapi begitulah kita; punya cara tersendiri untuk mencintai, menyimpan rapat cerita indah yang hanya menjadi milik kita berdua. Setiap kali bersamamu, terlintas di benakku “Oh, seperti inilah seharusnya peran seorang laki-laki dalam sebuah hubungan.”
+                                  Aku sungguh bersyukur kamu terlahir ke dunia dan takdir mempertemukan kita, meski terkadang jarak masih menjadi jeda di antara kita.
+                                Aku juga merasa bangga karena saat bersamaku, kamu bisa menjadi dirimu yang seutuhnya.
+                                 Kamu tak perlu bersembunyi di balik topeng. Aku tak pernah sedikit pun melihatmu sebagai sosok yang lemah saat kamu menunjukkan sisi rentanmu.
+                                  Justru di situlah letak indahnya—kita ada untuk saling melengkapi. Kita sama-sama tidak sempurna, dan ketidaksempurnaan itulah yang menjadi fondasi utama cerita kita. Sekali lagi, terima kasih ya sudah memilih untuk tetap di sini.
+                                 Maaf jika aku belum bisa menjadi yang sempurna, tapi terima kasih banyak sudah mau saling mengusahakan dan berjuang bersama sampai di titik ini.
+                                Mari terus menyusun dan menulis cerita kita sampai lembarannya tak lagi bersisa—bahkan sampai tak terbatas. I love you, sayang.
+                            </p>
+                            <button class="btn-read-more" data-article="2">
+                                <span>Baca Selengkapnya 📖</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Article Card 3 -->
+                    <article class="news-card">
+                        <div class="news-tag tag-anniversary">MENSIVERSARY</div>
+                        <div class="news-img-box">
+                            <img src="{{ url_for('static', filename='images/4.png') }}" alt="Janji Cinta Abadi" loading="lazy">
+                        </div>
+                        <div class="news-content">
+                            <div class="news-date">📅 30 September • Your Princess  </div>
+                            <h3 class="news-title">Surat singkat, tentang mensiversary kita</h3>
+                            <p class="news-excerpt">
+                                Tak terasa perjalanan kita sudah sejauh ini ya?
+                            Bagaimana kabarmu saat membaca tulisan ini? Bagaimana perasaanmu setelah melewati banyaknya kejadian kemarin? Aku benar-benar berharap kamu tetap menemukan bahagia di balik semua yang kita jalani. Sayang, aku cuma mau bilang terima kasih banyak, banyak sekali... karena kamu sudah mau bertahan dan melangkah sampai di titik ini. Aku sungguh bangga dan bersyukur punya kamu.
+                            Even though we recently went through a vulnerable phase, felt a bit distant, and watched our communication break down, thank you for still choosing me every single day. Thank you for never giving up on us.
+                            To be honest, it felt so heavy, didn't it? For a moment, we lost that feeling of being each other's safe haven. Even a quick conversation felt so different from how we used to be. So much happened this past month. The bright side is that we were both pushed to grow up—learning how to balance our relationship and our real-life priorities. But the downside was that we both became a little guarded, keeping things to ourselves. Honestly, I feel like even a seven-day deep talk wouldn't be enough to unpack everything, haha.
+                            Luckily for you, you didn't end up with a girl who gives up easily or plays the victim. You’ve got a tough one by your side! But above all the chaos, I am so deeply grateful that we always find our way back to the same path and the same shared dream. I also want to apologize if I’m still a bit reckless at times or if I haven't fully understood you the way you deserve.
+                            I love you, and I am in love with you—more than anything else in this world. I could never, ever get tired of you. Let’s rebuild, refine, and heal our bond together, step by step.  Promise to stay by my side? Hold my hand tight, and come here for a hug.
+                            I love you, ma chérie.💖✨
+                            </p>
+                            <button class="btn-read-more" data-article="3">
+                                <span>Baca Selengkapnya 📖</span>
+                            </button>
+                        </div>
+                    </article>
+
+                </div>
+            </section>
+        </div>
+
+        <!-- SECTION 4: KARTU PESAN DIBALIK (INTERACTIVE FLIP CARDS) -->
+        <div id="flipCardsSection" class="section-tab-content">
+            <section class="scrap-gallery scroll-reveal">
+                <div class="chapter-badge">Secret Message • Folded Card</div>
+                <h2 class="section-heading">Tap & Flip the Card to Read the Message 💌✨</h2>
+                <p class="section-subtext">Klik atau sentuh setiap kartu untuk membalikkan dan menemukan ungkapan perasaan rahasia.</p>
+                
+                <div class="flip-cards-grid">
+                    <!-- Card 1 -->
+                    <div class="flip-card">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front">
+                                <div class="stamp-icon">🌷</div>
+                                <h1>L</h1>
+                                <p></p>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>"L'amour de ma vie et mon refuge le plus doux à travers chaque saison."</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 2 -->
+                    <div class="flip-card">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front">
+                                <div class="stamp-icon">💌</div>
+                                <h1>O</h1>
+                                <p></p>
+                            </div>
+                            <div class="flip-card-back">
+                            <p>"Offrandes d'une affection pure qui s'intensifient à chaque jour partagé."</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 3 -->
+                    <div class="flip-card">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front">
+                                <div class="stamp-icon">✨</div>
+                                <h1>V</h1>
+                                <p>S</p>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>"Vowing to hold your hand through the quiet moments and the wildest storms."</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 4 -->
+                    <div class="flip-card">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front">
+                                <div class="stamp-icon">💖</div>
+                                <h1>E</h1>
+                                <p></p>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>"Everlastingly choosing you today, tomorrow, and for all the pages yet to come."</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- SECTION 5: WISHES & DO'A FROM FRIENDS AND LOVED ONES -->
+        <section id="feedbackSection" class="scrap-feedback scroll-reveal">
+            <div class="washi-tape tape-center"></div>
+            <div class="feedback-card">
+                <div class="feedback-header">
+                    <span class="envelope-icon">💐</span>
+                    <h2>Wishes & Prayers from Loved Ones</h2>
+                    <p>Leave Your Wishes & Blessings for Our Journey✨</p>
+                </div>
+
+                <form id="commentForm" class="comment-form">
+                    <div class="form-row">
+                        <label for="commentName">Nama (username) : </label>
+                        <input type="text" id="commentName" placeholder="Ketik nama atau usernamemu di sini..." value="" required>
+                    </div>
+
+                    <div class="form-row">
+                        <label>Choose Your Wishes & Blessings : </label>
+                        <div class="emotion-selector">
+                        <button type="button" class="emotion-btn active" data-emotion="💐">💐 Blessings</button>
+                        <button type="button" class="emotion-btn" data-emotion="🥂">🥂 Congrats</button>
+                        <button type="button" class="emotion-btn" data-emotion="🌟">🌟 Forever</button>
+                        <button type="button" class="emotion-btn" data-emotion="🌸">🌸 Happiness</button>
+                        </div>
+                        <input type="hidden" id="selectedEmotion" value="💐">
+                    </div>
+
+                    <div class="form-row">
+                        <label for="commentMessage">Your Wishes & Blessings:</label>
+                        <textarea id="commentMessage" rows="4" placeholder="Tuliskan ucapan selamat dan doa manismu untuk kami di sini..." required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-submit-love">
+                        <span>Send Your Wishes 💐✨</span>
+                    </button>
+                </form>
+
+                <!-- Saved Comments / Wishes Feed -->
+                <div class="comments-feed-container">
+                    <h3 class="feed-title">Guestbook of Wishes & Blessings 📖</h3>
+                    <div id="commentsList" class="comments-list">
+                        {% if initial_comments %}
+                            {% for c in initial_comments %}
+                            <div class="comment-paper-note">
+                                <div class="note-pin">📌</div>
+                                <div class="note-header">
+                                    <span class="note-author">{{ c.name }}</span>
+                                    <span class="note-emotion">{{ c.emotion }}</span>
+                                </div>
+                                <p class="note-message">{{ c.message }}</p>
+                                <span class="note-time">{{ c.created_at }}</span>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="no-comments" id="noCommentsText">Belum ada ucapan. Jadilah yang pertama memberikan doa terbaik! ✨</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="scrapbook-footer">
+            <p>Dibuat dengan ❤️ khusus untuk momen indah kita.</p>
+            <div class="admin-link">
+                <a href="/admin">🔗 Halaman Admin</a>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- Sumber musik MP3 lokal (static/audio/romantic_bgm.mp3) -->
+    <audio id="bgAudio" loop preload="auto" style="display:none;">
+        <source src="{{ url_for('static', filename='audio/romantic_bgm.mp3') }}" type="audio/mpeg">
+    </audio>
+
+    <!-- Hidden YouTube Player (opsional, dari MUSIC_CONFIG di static/js/main.js) -->
+    <div id="ytMusicPlayer"></div>
+    <script src="https://www.youtube.com/iframe_api"></script>
+
+    <!-- JavaScript Files -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
