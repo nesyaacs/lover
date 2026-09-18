@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session
 from supabase import create_client, Client
 from datetime import datetime
 import os
@@ -7,19 +7,28 @@ app = Flask(__name__, template_folder='templates', static_folder='static')
 app.secret_key = 'mensiv_scrapbook_romantic_secret_key_2026'
 
 # --- KONFIGURASI SUPABASE ---
-SUPABASE_URL = "URL_SUPABASE_KAMU"
-SUPABASE_KEY = "ANON_KEY_SUPABASE_KAMU"
+# Pastikan ganti teks di bawah dengan API Credentials dari Supabase kamu
+SUPABASE_URL = "https://xyz.supabase.co" 
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+supabase = None
+try:
+    if SUPABASE_URL and SUPABASE_KEY and "http" in SUPABASE_URL:
+        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+except Exception as e:
+    print(f"Inisialisasi Supabase Gagal: {e}")
 
 @app.route('/')
 def index():
     initial_name = session.get('visitor_name', '')
-    try:
-        response = supabase.table('comments').select('*').order('id', desc=True).limit(20).execute()
-        initial_comments = response.data
-    except Exception:
-        initial_comments = []
+    initial_comments = []
+    
+    if supabase:
+        try:
+            response = supabase.table('comments').select('*').order('id', desc=True).limit(20).execute()
+            initial_comments = response.data or []
+        except Exception as e:
+            print(f"Error fetch comments: {e}")
 
     return render_template('index.html', initial_name=initial_name, initial_comments=initial_comments)
 
@@ -36,19 +45,20 @@ def api_visit():
     user_agent = request.headers.get('User-Agent', '')
     now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    try:
-        supabase.table('visitors').insert({
-            'name': name,
-            'visited_at': now_str,
-            'ip_address': ip_addr,
-            'user_agent': user_agent
-        }).execute()
-    except Exception as e:
-        print(f"Error visit: {e}")
+    if supabase:
+        try:
+            supabase.table('visitors').insert({
+                'name': name,
+                'visited_at': now_str,
+                'ip_address': ip_addr,
+                'user_agent': user_agent
+            }).execute()
+        except Exception as e:
+            print(f"Error insert visitor: {e}")
 
     return jsonify({
         'status': 'success',
-        'message': f'Selamat datang, {name}! Kunjunganmu telah tercatat.'
+        'message': f'Selamat datang, {name}!'
     })
 
 @app.route('/api/comments', methods=['GET', 'POST'])
@@ -63,6 +73,9 @@ def api_comments():
         if not message:
             return jsonify({'status': 'error', 'message': 'Pesan tidak boleh kosong'}), 400
         
+        if not supabase:
+            return jsonify({'status': 'error', 'message': 'Koneksi database belum terhubung'}), 500
+
         try:
             res = supabase.table('comments').insert({
                 'name': name,
@@ -80,25 +93,19 @@ def api_comments():
 
             return jsonify({
                 'status': 'success',
-                'message': 'Pesan manismu berhasil tersimpan!',
+                'message': 'Pesan berhasil tersimpan!',
                 'comment': new_comment
             })
         except Exception as e:
-            return jsonify({'status': 'error', 'message': f'Gagal menyimpan ucapan: {str(e)}'}), 500
+            return jsonify({'status': 'error', 'message': f'Gagal menyimpan: {str(e)}'}), 500
     else:
+        if not supabase:
+            return jsonify({'status': 'success', 'comments': []})
         try:
             res = supabase.table('comments').select('*').order('id', desc=True).limit(50).execute()
-            return jsonify({'status': 'success', 'comments': res.data})
+            return jsonify({'status': 'success', 'comments': res.data or []})
         except Exception as e:
             return jsonify({'status': 'error', 'message': str(e)}), 500
 
-@app.route('/admin/comments/<int:comment_id>/delete', methods=['POST'])
-def admin_delete_comment(comment_id):
-    if not session.get('admin_logged_in'):
-        return jsonify({'status': 'error', 'message': 'Akses ditolak.'}), 401
-
-    try:
-        supabase.table('comments').delete().eq('id', comment_id).execute()
-        return jsonify({'status': 'success', 'message': 'Komentar berhasil dihapus.'})
-    except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+if __name__ == '__main__':
+    app.run(debug=True)
