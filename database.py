@@ -15,15 +15,15 @@ DB_PATH = os.path.join(os.path.dirname(__file__), 'scrapbook.db')
 # Isi dari Environment Variables Vercel (Project Settings > Environment Variables):
 #   SUPABASE_URL   -> contoh: https://xxxx.supabase.co
 #   SUPABASE_KEY   -> anon/public key dari Supabase (Settings > API)
-#   ADMIN_USERNAME -> username admin (default: admin)
-#   ADMIN_PASSWORD -> password admin  (default: admin123)
+#   ADMIN_USERNAME -> username admin (default: nesya)
+#   ADMIN_PASSWORD -> password admin  (default: neysadmin)
 #
 # Kalau SUPABASE_URL & SUPABASE_KEY terisi -> pakai Supabase (wajib untuk Vercel).
 # Kalau kosong -> fallback otomatis ke SQLite (cocok untuk jalan lokal).
 SUPABASE_URL = os.environ.get('SUPABASE_URL', '').strip().rstrip('/')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '').strip()
-ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'nesya')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'neysadmin')
 
 
 def use_supabase():
@@ -117,7 +117,7 @@ def init_db():
 
     cursor.execute('SELECT COUNT(*) FROM admin_users')
     if cursor.fetchone()[0] == 0:
-        add_admin_user('admin', 'admin123')
+        add_admin_user('nesya', 'neysadmin')
 
     conn.close()
 
