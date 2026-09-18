@@ -9,8 +9,11 @@ app.secret_key = 'mensiv_scrapbook_romantic_secret_key_2026'
 MEDIA_MAX_BYTES = 10 * 1024 * 1024
 MEDIA_FOLDERS = ('static/images', 'static/audio')
 
-# Ensure database tables exist
-database.init_db()
+# Ensure database tables exist (jangan sampai app crash saat start kalau DB belum siap)
+try:
+    database.init_db()
+except Exception as _e:
+    print(f"[PERINGATAN] Gagal inisialisasi database: {_e}")
 
 # Cek ukuran media saat server jalan — warning jika ada file > 10MB
 _project_dir = os.path.dirname(__file__)
@@ -24,10 +27,27 @@ for _folder in MEDIA_FOLDERS:
             _mb = round(os.path.getsize(_path) / (1024 * 1024), 1)
             print(f"[PERINGATAN] {_folder}/{_name} ({_mb} MB) melebihi batas 10MB — halaman akan memuat lebih lambat.")
 
+@app.route('/api/health')
+def api_health():
+    try:
+        backend = 'supabase' if database.use_supabase() else 'sqlite'
+    except Exception:
+        backend = 'unknown'
+    return jsonify({
+        'status': 'ok',
+        'backend': backend,
+        'supabase_url_set': bool(os.environ.get('SUPABASE_URL')),
+        'supabase_key_set': bool(os.environ.get('SUPABASE_KEY')),
+    })
+
 @app.route('/')
 def index():
     initial_name = session.get('visitor_name', '')
-    initial_comments = database.get_comments(20)
+    try:
+        initial_comments = database.get_comments(20)
+    except Exception as e:
+        print(f"[PERINGATAN] Gagal ambil komentar: {e}")
+        initial_comments = []
     return render_template('index.html', initial_name=initial_name, initial_comments=initial_comments)
 
 @app.route('/admin/login', methods=['GET', 'POST'])
@@ -40,10 +60,15 @@ def admin_login():
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
         
-        if database.verify_admin(username, password):
+        try:
+            valid = database.verify_admin(username, password)
+        except Exception as e:
+            valid = False
+            error = f'Koneksi database gagal: {e}'
+        if valid:
             session['admin_logged_in'] = True
             return redirect(url_for('admin'))
-        else:
+        elif error is None:
             error = 'Username atau password yang kamu masukkan salah!'
             
     return render_template('admin_login.html', error=error)
@@ -58,9 +83,15 @@ def admin():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
         
-    stats = database.get_stats()
-    visitors = database.get_visitors(100)
-    comments = database.get_comments(100)
+    try:
+        stats = database.get_stats()
+        visitors = database.get_visitors(100)
+        comments = database.get_comments(100)
+    except Exception as e:
+        print(f"[PERINGATAN] Gagal ambil data admin: {e}")
+        stats = {'total_visitors': 0, 'total_comments': 0}
+        visitors = []
+        comments = []
     return render_template('admin.html', stats=stats, visitors=visitors, comments=comments)
 
 @app.route('/api/visit', methods=['POST'])
@@ -112,7 +143,10 @@ def api_comments():
             }
         })
     else:
-        comments = database.get_comments(50)
+        try:
+            comments = database.get_comments(50)
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': str(e)}), 500
         return jsonify({'status': 'success', 'comments': comments})
 
 @app.route('/admin/comments/<int:comment_id>/delete', methods=['POST'])
@@ -125,7 +159,10 @@ def admin_delete_comment(comment_id):
     except Exception as e:
         return jsonify({'status': 'error', 'message': f'Gagal menghapus komentar: {e}'}), 500
     if deleted:
-        stats = database.get_stats()
+        try:
+            stats = database.get_stats()
+        except Exception:
+            stats = {'total_visitors': 0, 'total_comments': 0}
         return jsonify({'status': 'success', 'message': 'Komentar berhasil dihapus.', 'stats': stats})
     else:
         return jsonify({'status': 'error', 'message': 'Komentar tidak ditemukan.'}), 404
@@ -135,9 +172,12 @@ def api_logs():
     if not session.get('admin_logged_in'):
         return jsonify({'status': 'error', 'message': 'Akses ditolak. Silakan login sebagai admin.'}), 401
         
-    visitors = database.get_visitors(100)
-    comments = database.get_comments(100)
-    stats = database.get_stats()
+    try:
+        visitors = database.get_visitors(100)
+        comments = database.get_comments(100)
+        stats = database.get_stats()
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
     return jsonify({
         'status': 'success',
         'stats': stats,
