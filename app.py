@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from urllib.parse import urlparse
 import database
 import os
 
@@ -29,16 +30,23 @@ for _folder in MEDIA_FOLDERS:
 
 @app.route('/api/health')
 def api_health():
-    try:
-        backend = 'supabase' if database.use_supabase() else 'sqlite'
-    except Exception:
-        backend = 'unknown'
-    return jsonify({
+    url = os.environ.get('SUPABASE_URL', '')
+    parsed = urlparse(url)
+    info = {
         'status': 'ok',
-        'backend': backend,
-        'supabase_url_set': bool(os.environ.get('SUPABASE_URL')),
+        'backend': 'supabase' if database.use_supabase() else 'sqlite',
+        'supabase_url_set': bool(url),
         'supabase_key_set': bool(os.environ.get('SUPABASE_KEY')),
-    })
+        'supabase_host': parsed.hostname or '',
+        'supabase_scheme': parsed.scheme or '',
+    }
+    if request.args.get('test'):
+        try:
+            database.get_comments(1)
+            info['db_test'] = 'ok'
+        except Exception as e:
+            info['db_test'] = f'{type(e).__name__}: {e}'
+    return jsonify(info)
 
 @app.route('/')
 def index():
