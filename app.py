@@ -32,13 +32,15 @@ for _folder in MEDIA_FOLDERS:
 def api_health():
     url = os.environ.get('SUPABASE_URL', '')
     parsed = urlparse(url)
+    key = os.environ.get('SUPABASE_KEY', '')
     info = {
         'status': 'ok',
         'backend': 'supabase' if database.use_supabase() else 'sqlite',
         'supabase_url_set': bool(url),
-        'supabase_key_set': bool(os.environ.get('SUPABASE_KEY')),
+        'supabase_key_set': bool(key),
         'supabase_host': parsed.hostname or '',
         'supabase_scheme': parsed.scheme or '',
+        'supabase_key_len': len(key),
     }
     if request.args.get('test'):
         try:
