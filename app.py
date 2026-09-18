@@ -75,7 +75,10 @@ def api_visit():
     ip_addr = request.headers.get('X-Forwarded-For', request.remote_addr)
     user_agent = request.headers.get('User-Agent', '')
     
-    database.add_visitor(name=name, ip_address=ip_addr, user_agent=user_agent)
+    try:
+        database.add_visitor(name=name, ip_address=ip_addr, user_agent=user_agent)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'Gagal mencatat kunjungan: {e}'}), 500
     return jsonify({
         'status': 'success',
         'message': f'Selamat datang, {name}! Kunjunganmu telah tercatat.'
@@ -92,7 +95,10 @@ def api_comments():
         if not message:
             return jsonify({'status': 'error', 'message': 'Pesan tidak boleh kosong'}), 400
         
-        comment_id = database.add_comment(name=name, message=message, emotion=emotion)
+        try:
+            comment_id = database.add_comment(name=name, message=message, emotion=emotion)
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': f'Gagal menyimpan ucapan: {e}'}), 500
         
         return jsonify({
             'status': 'success',
@@ -114,7 +120,10 @@ def admin_delete_comment(comment_id):
     if not session.get('admin_logged_in'):
         return jsonify({'status': 'error', 'message': 'Akses ditolak. Silakan login sebagai admin.'}), 401
 
-    deleted = database.delete_comment(comment_id)
+    try:
+        deleted = database.delete_comment(comment_id)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'Gagal menghapus komentar: {e}'}), 500
     if deleted:
         stats = database.get_stats()
         return jsonify({'status': 'success', 'message': 'Komentar berhasil dihapus.', 'stats': stats})
