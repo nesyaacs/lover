@@ -38,8 +38,8 @@ const MUSIC_CONFIG = {
     source: 'mp3',
     playlist: [
         { file: 'romantic_bgm.mp3', title: 'Our Romantic Melody' },
-        { file: 'lagu-2.mp3', title: 'Lagu 2' },
-        { file: 'lagu-3.mp3', title: 'Lagu 3' },
+        { file: 'romantic3', title: 'The True Shape of Me' },
+        { file: 'romantic2', title: 'Euphoria & Wild Moments' },
         { file: 'lagu-4.mp3', title: 'Lagu 4' }
     ],
     youtubeVideoId: 'Kf5pXDhx5Vc'
