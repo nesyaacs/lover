@@ -54,7 +54,8 @@ def api_health():
 def index():
     initial_name = session.get('visitor_name', '')
     try:
-        initial_comments = database.get_comments(20)
+        # Tampilkan SEMUA ucapan (tanpa batas), terbaru di atas
+        initial_comments = database.get_comments_all()
     except Exception as e:
         print(f"[PERINGATAN] Gagal ambil komentar: {e}")
         initial_comments = []
@@ -96,7 +97,7 @@ def admin():
     try:
         stats = database.get_stats()
         visitors = database.get_visitors(100)
-        comments = database.get_comments(100)
+        comments = database.get_comments_all()
     except Exception as e:
         print(f"[PERINGATAN] Gagal ambil data admin: {e}")
         stats = {'total_visitors': 0, 'total_comments': 0}
@@ -154,7 +155,7 @@ def api_comments():
         })
     else:
         try:
-            comments = database.get_comments(50)
+            comments = database.get_comments_all()
         except Exception as e:
             return jsonify({'status': 'error', 'message': str(e)}), 500
         return jsonify({'status': 'success', 'comments': comments})
@@ -184,7 +185,7 @@ def api_logs():
         
     try:
         visitors = database.get_visitors(100)
-        comments = database.get_comments(100)
+        comments = database.get_comments_all()
         stats = database.get_stats()
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500

@@ -15,15 +15,27 @@ DB_PATH = os.path.join(os.path.dirname(__file__), 'scrapbook.db')
 # Isi dari Environment Variables Vercel (Project Settings > Environment Variables):
 #   SUPABASE_URL   -> contoh: https://xxxx.supabase.co
 #   SUPABASE_KEY   -> anon/public key dari Supabase (Settings > API)
-#   ADMIN_USERNAME -> username admin (default: nesya)
-#   ADMIN_PASSWORD -> password admin  (default: neysadmin)
+#   ADMIN_USERNAME -> username admin tambahan (opsional, default: nesya)
+#   ADMIN_PASSWORD -> password admin tambahan (opsional, default: neysadmin)
+#
+# Daftar akun admin yang selalu aktif (bisa ditambah lewat env di atas):
+#   nesya  / neysadmin
+#   andra  / aryandradmin
 #
 # Kalau SUPABASE_URL & SUPABASE_KEY terisi -> pakai Supabase (wajib untuk Vercel).
 # Kalau kosong -> fallback otomatis ke SQLite (cocok untuk jalan lokal).
 SUPABASE_URL = os.environ.get('SUPABASE_URL', '').strip().rstrip('/')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '').strip()
-ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'nesya')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'neysadmin')
+
+ADMIN_ACCOUNTS = [
+    ('nesya', 'neysadmin'),
+    ('andra', 'aryandradmin'),
+]
+
+_env_user = os.environ.get('ADMIN_USERNAME', '').strip()
+_env_pass = os.environ.get('ADMIN_PASSWORD', '')
+if _env_user and _env_pass and (_env_user, _env_pass) not in ADMIN_ACCOUNTS:
+    ADMIN_ACCOUNTS.append((_env_user, _env_pass))
 
 
 def use_supabase():
@@ -117,7 +129,8 @@ def init_db():
 
     cursor.execute('SELECT COUNT(*) FROM admin_users')
     if cursor.fetchone()[0] == 0:
-        add_admin_user('nesya', 'neysadmin')
+        for _u, _p in ADMIN_ACCOUNTS:
+            add_admin_user(_u, _p)
 
     conn.close()
 
@@ -127,7 +140,7 @@ def init_db():
 # ============================================================
 def add_admin_user(username, password):
     if use_supabase():
-        print('[INFO] Mode Supabase: admin login diatur lewat env ADMIN_USERNAME & ADMIN_PASSWORD di Vercel.')
+        print('[INFO] Mode Supabase: admin login memakai daftar akun di database.ADMIN_ACCOUNTS.')
         return None
 
     conn = get_db_connection()
@@ -145,12 +158,19 @@ def add_admin_user(username, password):
 
 
 def verify_admin(username, password):
+    uname = username.strip()
+
+    # Akun bawaan (nesya / andra) selalu valid, baik di Supabase maupun SQLite
+    for acct_user, acct_pass in ADMIN_ACCOUNTS:
+        if uname == acct_user and password == acct_pass:
+            return True
+
     if use_supabase():
-        return username.strip() == ADMIN_USERNAME and password == ADMIN_PASSWORD
+        return False
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM admin_users WHERE username = ?', (username.strip(),))
+    cursor.execute('SELECT * FROM admin_users WHERE username = ?', (uname,))
     row = cursor.fetchone()
     conn.close()
     if row is None:
@@ -260,6 +280,22 @@ def get_comments(limit=50):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM comments ORDER BY id DESC LIMIT ?', (limit,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+def get_comments_all():
+    """Ambil SEMUA ucapan tanpa batas, terbaru di atas."""
+    if use_supabase():
+        return _sb_request('GET', 'comments', params={
+            'select': '*',
+            'order': 'id.desc',
+        })
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM comments ORDER BY id DESC')
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]
