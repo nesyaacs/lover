@@ -7,16 +7,24 @@
 /* ==========================================================================
    KONFIGURASI MUSIK
    Cara pakai:
-   1. Taruh file lagunya (format .mp3) di folder:  static/audio/
-   2. Tambah 1 baris di MUSIC_CONFIG.playlist di bawah (nama file saja).
-      Album automatically plays all songs in order, and there are ⏮ ⏭ buttons.
+   1. Taruh file lagunya (format .mp3) ke folder:  static/audio/
+   2. Slot di bawah sudah disiapkan, tinggal ubah nama file + judulnya.
+      Nama file HARUS sama persis dengan file yang kamu taruh di static/audio/.
 
-   Contoh kalau punya 3 lagu:
-     playlist: [
-         { file: 'romantic_bgm.mp3',  title: 'Our Romantic Melody' },
-         { file: 'lagu_kedua.mp3',   title: 'Judul Lagu Kedua' },
-         { file: 'lagu_ketiga.mp3',  title: 'Judul Lagu Ketiga' }
-     ]
+   Slot yang tersedia:
+     romantic_bgm.mp3  ->  lagu pertama  (lagu kamu yang sekarang, jangan diubah)
+     lagu-2.mp3        ->  lagu kedua    (BELUM ADA, otomatis dilewati)
+     lagu-3.mp3        ->  lagu ketiga   (BELUM ADA, otomatis dilewati)
+     lagu-4.mp3        ->  lagu keempat  (BELUM ADA, otomatis dilewati)
+
+   Cara isi slot lagu ke-2:
+     a. Rename file lagumu jadi  lagu-2.mp3
+     b. Taruh di folder static/audio/
+     c. Ganti baris { file: 'lagu-2.mp3', title: 'Lagu 2' }
+        jadi { file: 'lagu-2.mp3', title: 'Judul Lagu Kamu' }
+
+   Slot yang file-nya belum ada akan DILEWATI otomatis (tidak error).
+   Widget pojok kanan bawah punya tombol ⏮ ⏸ ⏭ (sebelumnya / play-pause / sesudah).
 
    Mode 'youtube' (opsional) kalau mau pakai link YouTube:
      - set source: 'youtube' dan isi youtubeVideoId dengan ID 11 karakter.
@@ -29,7 +37,10 @@
 const MUSIC_CONFIG = {
     source: 'mp3',
     playlist: [
-        { file: 'romantic_bgm.mp3', title: 'Our Romantic Melody' }
+        { file: 'romantic_bgm.mp3', title: 'Our Romantic Melody' },
+        { file: 'lagu-2.mp3', title: 'Lagu 2' },
+        { file: 'lagu-3.mp3', title: 'Lagu 3' },
+        { file: 'lagu-4.mp3', title: 'Lagu 4' }
     ],
     youtubeVideoId: 'Kf5pXDhx5Vc'
 };
