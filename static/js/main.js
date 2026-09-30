@@ -6,16 +6,31 @@
 
 /* ==========================================================================
    KONFIGURASI MUSIK
-   Pilih sumber lagu:
-   - 'mp3'     : pakai file MP3 lokal di static/audio/romantic_bgm.mp3 (PALING AMAN)
-   - 'youtube' : pakai link YouTube, isi youtubeVideoId dengan ID 11 karakter.
-     Contoh: dari https://www.youtube.com/watch?v=450p7goxZqg
-     ambil bagian 11 karakter setelah v= -> '450p7goxZqg'
+   Cara pakai:
+   1. Taruh file lagunya (format .mp3) di folder:  static/audio/
+   2. Tambah 1 baris di MUSIC_CONFIG.playlist di bawah (nama file saja).
+      Album automatically plays all songs in order, and there are ⏮ ⏭ buttons.
+
+   Contoh kalau punya 3 lagu:
+     playlist: [
+         { file: 'romantic_bgm.mp3',  title: 'Our Romantic Melody' },
+         { file: 'lagu_kedua.mp3',   title: 'Judul Lagu Kedua' },
+         { file: 'lagu_ketiga.mp3',  title: 'Judul Lagu Ketiga' }
+     ]
+
+   Mode 'youtube' (opsional) kalau mau pakai link YouTube:
+     - set source: 'youtube' dan isi youtubeVideoId dengan ID 11 karakter.
+       Contoh: dari https://www.youtube.com/watch?v=450p7goxZqg
+       ambil bagian 11 karakter setelah v= -> '450p7goxZqg'
    CATATAN: beberapa lagu dari music.youtube.com tidak boleh di-embed,
    kalau suaranya tetap tidak muncul, pakai mode 'mp3'.
+   Batas ukuran file: 10MB per lagu.
    ========================================================================== */
 const MUSIC_CONFIG = {
-    source: 'lovesong.mp3',
+    source: 'mp3',
+    playlist: [
+        { file: 'romantic_bgm.mp3', title: 'Our Romantic Melody' }
+    ],
     youtubeVideoId: 'Kf5pXDhx5Vc'
 };
 
@@ -78,8 +93,85 @@ document.addEventListener('DOMContentLoaded', () => {
     const bgAudio = document.getElementById('bgAudio');
     const vinylDisk = document.getElementById('vinylDisk');
     const musicStatus = document.getElementById('musicStatus');
+    const musicTitle = document.getElementById('musicTitle');
     const audioIcon = document.getElementById('audioIcon');
     const toggleAudioBtn = document.getElementById('toggleAudioBtn');
+    const prevSongBtn = document.getElementById('prevSongBtn');
+    const nextSongBtn = document.getElementById('nextSongBtn');
+
+    /* ==========================================================================
+       PLAYLIST MP3 (mode 'mp3'): putar semua lagu satu per satu
+       ========================================================================== */
+    const PLAYLIST = (MUSIC_CONFIG.playlist || []).filter(s => s && s.file);
+    const AUDIO_BASE = (bgAudio && bgAudio.dataset.audioBase) || '/static/audio/';
+    let currentSongIndex = 0;
+    let skipGuard = 0;
+
+    function updateSongLabel() {
+        if (!musicTitle) return;
+        if (PLAYLIST.length > 1) {
+            const song = PLAYLIST[currentSongIndex];
+            musicTitle.textContent = song.title || song.file;
+        }
+    }
+
+    /* Muat lagu ke player. File yang tidak ada akan dilewati otomatis. */
+    function loadSong(index, autoplay) {
+        if (!bgAudio || PLAYLIST.length === 0) return;
+        currentSongIndex = ((index % PLAYLIST.length) + PLAYLIST.length) % PLAYLIST.length;
+        const song = PLAYLIST[currentSongIndex];
+
+        // Hanya 1 lagu -> loop. Lebih dari 1 -> pindah otomatis setelah habis.
+        bgAudio.loop = PLAYLIST.length === 1;
+        bgAudio.src = AUDIO_BASE + song.file;
+        updateSongLabel();
+
+        if (autoplay) {
+            const p = bgAudio.play();
+            if (p !== undefined) {
+                p.then(() => setPlayingState(true)).catch(() => {});
+            }
+        }
+    }
+
+    function nextSong() {
+        if (PLAYLIST.length <= 1) return;
+        loadSong(currentSongIndex + 1, isAudioPlaying);
+    }
+
+    function prevSong() {
+        if (PLAYLIST.length <= 1) return;
+        loadSong(currentSongIndex - 1, isAudioPlaying);
+    }
+
+    if (bgAudio && PLAYLIST.length > 0) {
+        bgAudio.addEventListener('ended', () => {
+            if (PLAYLIST.length > 1) nextSong();
+        });
+
+        // Kalau file lagu tidak ditemukan / gagal dimuat -> coba lagu berikutnya
+        bgAudio.addEventListener('error', () => {
+            if (PLAYLIST.length > 1 && skipGuard < PLAYLIST.length) {
+                skipGuard++;
+                loadSong(currentSongIndex + 1, isAudioPlaying);
+            }
+        });
+
+        loadSong(0, false);
+    }
+
+    if (prevSongBtn) {
+        prevSongBtn.addEventListener('click', () => {
+            skipGuard = 0;
+            prevSong();
+        });
+    }
+    if (nextSongBtn) {
+        nextSongBtn.addEventListener('click', () => {
+            skipGuard = 0;
+            nextSong();
+        });
+    }
 
     /* ==========================================================================
        1. HEADER NAVIGATION TAB SWITCHING
@@ -217,6 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Sumber 2: file MP3 lokal (mode 'mp3')
         if (bgAudio) {
             try {
+                skipGuard = 0;
                 bgAudio.volume = 0.7;
                 const p = bgAudio.play();
                 if (p !== undefined) {
@@ -255,14 +348,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setPlayingState(playing) {
         isAudioPlaying = playing;
+        if (musicStatus && PLAYLIST.length > 1) {
+            const counter = ` (${currentSongIndex + 1}/${PLAYLIST.length})`;
+            musicStatus.textContent = playing ? `Sedang memutar 🎵${counter}` : `Klik untuk memutar 🎵${counter}`;
+        }
         if (playing) {
             vinylDisk.classList.add('spinning');
             audioIcon.textContent = '⏸️';
-            musicStatus.textContent = 'Sedang memutar 🎵';
+            if (!musicStatus || PLAYLIST.length <= 1) {
+                musicStatus.textContent = 'Sedang memutar 🎵';
+            }
         } else {
             vinylDisk.classList.remove('spinning');
             audioIcon.textContent = '▶️';
-            musicStatus.textContent = 'Klik untuk memutar 🎵';
+            if (!musicStatus || PLAYLIST.length <= 1) {
+                musicStatus.textContent = 'Klik untuk memutar 🎵';
+            }
         }
     }
 

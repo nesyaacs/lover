@@ -68,12 +68,16 @@
             <div class="vinyl-center">🌸</div>
         </div>
         <div class="music-info">
-            <div class="music-title">Our Romantic Melody</div>
+            <div class="music-title" id="musicTitle">Our Romantic Melody</div>
             <div class="music-status" id="musicStatus">Klik untuk memutar 🎵</div>
         </div>
-        <button id="toggleAudioBtn" class="music-btn" title="Putar/Hentikan Musik">
-            <span id="audioIcon">▶️</span>
-        </button>
+        <div class="music-controls">
+            <button id="prevSongBtn" class="music-btn music-btn-sm" title="Lagu sebelumnya" aria-label="Lagu sebelumnya">⏮</button>
+            <button id="toggleAudioBtn" class="music-btn" title="Putar/Hentikan Musik">
+                <span id="audioIcon">▶️</span>
+            </button>
+            <button id="nextSongBtn" class="music-btn music-btn-sm" title="Lagu berikutnya" aria-label="Lagu berikutnya">⏭</button>
+        </div>
     </div>
 
     <!-- Main Container -->
@@ -280,7 +284,7 @@
                                         <img class="polaroid-svg-placeholder" src="{{ url_for('static', filename='images/69.png') }}" alt="Senyum yang Menenangkan">
                                     </div>
                                     <div class="polaroid-caption">
-                                        <span class="caption-text">MOS AUREFLAME GEN-3. Ignora Mourvie and Forgeron Andra</span>
+                                        <span class="caption-text">MOS AUREFLAME GEN-3. Ignora Mourvie and Fogeron Andra</span>
                                         <span class="caption-date">Slide 6 of 10</span>
                                     </div>
                                 </div>
@@ -589,7 +593,7 @@
     </div>
 
     <!-- Sumber musik MP3 lokal (static/audio/romantic_bgm.mp3) -->
-    <audio id="bgAudio" loop preload="auto" style="display:none;">
+    <audio id="bgAudio" loop preload="auto" data-audio-base="{{ url_for('static', filename='audio/') }}" style="display:none;">
         <source src="{{ url_for('static', filename='audio/romantic_bgm.mp3') }}" type="audio/mpeg">
     </audio>
 

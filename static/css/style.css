@@ -1316,6 +1316,18 @@ body {
     background: var(--accent-rose);
 }
 
+.music-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.music-btn-sm {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+}
+
 /* ==========================================================================
    FOOTER
    ========================================================================== */
