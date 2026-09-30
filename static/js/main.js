@@ -6,25 +6,21 @@
 
 /* ==========================================================================
    KONFIGURASI MUSIK
-   Cara pakai:
-   1. Taruh file lagunya (format .mp3) ke folder:  static/audio/
-   2. Slot di bawah sudah disiapkan, tinggal ubah nama file + judulnya.
-      Nama file HARUS sama persis dengan file yang kamu taruh di static/audio/.
+   Cara pakai (sangat gampang):
+   1. Taruh file .mp3 ke folder  static/audio/
+   2. Selesai. Playlist OTOMATIS bertambah, tidak perlu edit kode ini.
+      - 'romantic_bgm.mp3' selalu jadi lagu pertama.
+      - File lain otomatis jadi lagu ke-2, ke-3, ke-4, ... (urutan nama file).
+      - Judul lagunya diambil dari nama file (mis. 'lagu-2.mp3' -> 'Lagu 2').
 
-   Slot yang tersedia:
-     romantic_bgm.mp3  ->  lagu pertama  (lagu kamu yang sekarang, jangan diubah)
-     lagu-2.mp3        ->  lagu kedua    (BELUM ADA, otomatis dilewati)
-     lagu-3.mp3        ->  lagu ketiga   (BELUM ADA, otomatis dilewati)
-     lagu-4.mp3        ->  lagu keempat  (BELUM ADA, otomatis dilewati)
+   Kalau mau judul custom untuk salah satu lagu, tambahkan di MUSIC_CONFIG.playlist:
+     playlist: [
+         { file: 'romantic_bgm.mp3', title: 'Our Romantic Melody' },
+         { file: 'lagu-2.mp3', title: 'Judul Lagu Kamu' }
+     ],
 
-   Cara isi slot lagu ke-2:
-     a. Rename file lagumu jadi  lagu-2.mp3
-     b. Taruh di folder static/audio/
-     c. Ganti baris { file: 'lagu-2.mp3', title: 'Lagu 2' }
-        jadi { file: 'lagu-2.mp3', title: 'Judul Lagu Kamu' }
-
-   Slot yang file-nya belum ada akan DILEWATI otomatis (tidak error).
-   Widget pojok kanan bawah punya tombol ⏮ ⏸ ⏭ (sebelumnya / play-pause / sesudah).
+   Widget pojok kanan bawah ada tombol ⏮ ⏸ ⏭ (sebelumnya / play-pause / sesudah).
+   Kalau cuma ada 1 lagu, tombol ⏮ ⏭ disembunyikan dan lagunya di-loop.
 
    Mode 'youtube' (opsional) kalau mau pakai link YouTube:
      - set source: 'youtube' dan isi youtubeVideoId dengan ID 11 karakter.
@@ -36,11 +32,14 @@
    ========================================================================== */
 const MUSIC_CONFIG = {
     source: 'mp3',
+    // Daftar lagu TIDAK perlu diedit manual lagi:
+    // website otomatis mengambil semua file .mp3 yang ada di static/audio/
+    // lewat /api/songs. Baris di bawah hanya untuk memberi JUDUL yang rapi.
+    // PENTING: nama file harus lengkap dengan ekstensi, misal 'romantic2.mp3'.
     playlist: [
         { file: 'romantic_bgm.mp3', title: 'Our Romantic Melody' },
-        { file: 'romantic3', title: 'The True Shape of Me' },
-        { file: 'romantic2', title: 'Euphoria & Wild Moments' },
-        { file: 'lagu-4.mp3', title: 'Lagu 4' }
+        { file: 'romantic3.mp3', title: 'The True Shape of Me' },
+        { file: 'romantic2.mp3', title: 'Euphoria & Wild Moments' }
     ],
     youtubeVideoId: 'Kf5pXDhx5Vc'
 };
@@ -112,29 +111,82 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ==========================================================================
        PLAYLIST MP3 (mode 'mp3'): putar semua lagu satu per satu
+       Daftar lagu diambil dari /api/songs supaya hanya berisi file yang ADA.
+       'romantic_bgm.mp3' selalu jadi lagu pertama.
        ========================================================================== */
-    const PLAYLIST = (MUSIC_CONFIG.playlist || []).filter(s => s && s.file);
     const AUDIO_BASE = (bgAudio && bgAudio.dataset.audioBase) || '/static/audio/';
+    const MAIN_SONG = 'romantic_bgm.mp3';
+
+    function prettifyName(fname) {
+        return fname.replace(/\.[a-z0-9]+$/i, '').replace(/[_-]+/g, ' ').trim();
+    }
+
+    /* Lengkapi ekstensi kalau lupa, mis. 'romantic2' -> 'romantic2.mp3' */
+    function normalizeFile(fname) {
+        const f = String(fname || '').trim();
+        if (!f) return '';
+        return /\.[a-z0-9]+$/i.test(f) ? f : f + '.mp3';
+    }
+
+    /* Susun playlist: lagu utama dulu, lalu file lain yang ada, sesuai urutan config */
+    function buildPlaylist(files) {
+        const actual = files.map(url => normalizeFile(url.split('/').pop()));
+
+        const configured = (MUSIC_CONFIG.playlist || [])
+            .filter(s => s && s.file)
+            .map(s => ({ file: normalizeFile(s.file), title: s.title || prettifyName(s.file) }));
+
+        const titles = {};
+        configured.forEach(s => { titles[s.file] = s.title; });
+
+        // Hanya pakai file yang benar-benar ada di server
+        const known = configured
+            .map(s => s.file)
+            .filter(f => actual.indexOf(f) !== -1)
+            .filter((f, i, arr) => arr.indexOf(f) === i);
+
+        // File lain yang ada tapi belum terdaftar -> otomatis jadi lagu berikutnya
+        const extra = actual
+            .filter(f => known.indexOf(f) === -1)
+            .filter((f, i, arr) => arr.indexOf(f) === i);
+
+        return known.concat(extra).map(f => ({
+            file: f,
+            title: titles[f] || prettifyName(f)
+        }));
+    }
+
+    let PLAYLIST = [];
     let currentSongIndex = 0;
     let skipGuard = 0;
 
-    function updateSongLabel() {
-        if (!musicTitle) return;
-        if (PLAYLIST.length > 1) {
-            const song = PLAYLIST[currentSongIndex];
-            musicTitle.textContent = song.title || song.file;
-        }
+    function applyPlaylist(files) {
+        PLAYLIST = buildPlaylist(files);
+        bgAudio.loop = PLAYLIST.length <= 1;
+        if (PLAYLIST.length > 0) loadSong(0, false);
+        updateSwitchButtons();
     }
 
-    /* Muat lagu ke player. File yang tidak ada akan dilewati otomatis. */
+    /* Tombol ⏮ ⏭ disembunyikan kalau hanya ada 1 lagu */
+    function updateSwitchButtons() {
+        const many = PLAYLIST.length > 1;
+        if (prevSongBtn) prevSongBtn.style.display = many ? '' : 'none';
+        if (nextSongBtn) nextSongBtn.style.display = many ? '' : 'none';
+    }
+
+    function updateSongLabel() {
+        if (!musicTitle) return;
+        const song = PLAYLIST[currentSongIndex];
+        if (!song) return;
+        musicTitle.textContent = PLAYLIST.length > 1 ? song.title : 'Our Romantic Melody';
+    }
+
+    /* Muat lagu ke player */
     function loadSong(index, autoplay) {
         if (!bgAudio || PLAYLIST.length === 0) return;
         currentSongIndex = ((index % PLAYLIST.length) + PLAYLIST.length) % PLAYLIST.length;
-        const song = PLAYLIST[currentSongIndex];
-
-        // Hanya 1 lagu -> loop. Lebih dari 1 -> pindah otomatis setelah habis.
         bgAudio.loop = PLAYLIST.length === 1;
-        bgAudio.src = AUDIO_BASE + song.file;
+        bgAudio.src = AUDIO_BASE + PLAYLIST[currentSongIndex].file;
         updateSongLabel();
 
         if (autoplay) {
@@ -155,20 +207,26 @@ document.addEventListener('DOMContentLoaded', () => {
         loadSong(currentSongIndex - 1, isAudioPlaying);
     }
 
-    if (bgAudio && PLAYLIST.length > 0) {
+    if (bgAudio) {
         bgAudio.addEventListener('ended', () => {
             if (PLAYLIST.length > 1) nextSong();
         });
 
-        // Kalau file lagu tidak ditemukan / gagal dimuat -> coba lagu berikutnya
-        bgAudio.addEventListener('error', () => {
-            if (PLAYLIST.length > 1 && skipGuard < PLAYLIST.length) {
-                skipGuard++;
-                loadSong(currentSongIndex + 1, isAudioPlaying);
-            }
-        });
-
-        loadSong(0, false);
+        // Playlist pertama: pakai /api/songs, cadangan pakai config di atas
+        try {
+            fetch('/api/songs')
+                .then(r => r.ok ? r.json() : null)
+                .then(files => {
+                    if (Array.isArray(files) && files.length > 0) {
+                        applyPlaylist(files);
+                    } else {
+                        applyPlaylist((MUSIC_CONFIG.playlist || []).map(s => s.file));
+                    }
+                })
+                .catch(() => applyPlaylist((MUSIC_CONFIG.playlist || []).map(s => s.file)));
+        } catch (e) {
+            applyPlaylist((MUSIC_CONFIG.playlist || []).map(s => s.file));
+        }
     }
 
     if (prevSongBtn) {

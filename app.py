@@ -50,6 +50,17 @@ def api_health():
             info['db_test'] = f'{type(e).__name__}: {e}'
     return jsonify(info)
 
+@app.route('/api/songs')
+def api_songs():
+    """Daftar lagu yang benar-benar ada di static/audio/ (buat playlist di browser)."""
+    songs = []
+    audio_dir = os.path.join(os.path.dirname(__file__), 'static', 'audio')
+    if os.path.isdir(audio_dir):
+        for fname in sorted(os.listdir(audio_dir)):
+            if fname.lower().endswith(('.mp3', '.m4a', '.ogg', '.wav')):
+                songs.append('/static/audio/' + fname)
+    return jsonify(songs)
+
 @app.route('/')
 def index():
     initial_name = session.get('visitor_name', '')
